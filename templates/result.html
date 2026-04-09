@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversion Complete - PicTransformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .success-icon {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 24px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .file-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .file-original {
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+        .file-name {
+            color: #334155;
+            font-size: 0.95rem;
+        }
+        .size-info {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .size-reduction {
+            color: #10b981;
+            font-weight: 600;
+        }
+        .size-increase {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #64748b;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✅</div>
+        <h1>Conversion Complete!</h1>
+        <p class="subtitle">{{ files|length }} image(s) successfully converted to JPEG</p>
+        
+        <div class="file-list">
+            {% for file in files %}
+            <div class="file-item">
+                <div class="file-info">
+                    <span class="file-name">{{ file.converted }}</span>
+                    <span class="file-original">from: {{ file.original }}</span>
+                    <span class="size-info">
+                        {{ (file.original_size / 1024)|round(1) }} KB → {{ (file.converted_size / 1024)|round(1) }} KB
+                        {% if file.original_size > file.converted_size %}
+                            <span class="size-reduction">↓ {{ ((1 - file.converted_size / file.original_size) * 100)|round(0) }}%</span>
+                        {% else %}
+                            <span class="size-increase">↑ {{ ((file.converted_size / file.original_size - 1) * 100)|round(0) }}%</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <a href="{{ url_for('download_file', filename=session_id + '_' + file.converted) }}" class="btn" style="padding: 8px 16px; font-size: 0.85rem;">Download</a>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="btn-group">
+            <a href="{{ url_for('download_all', session_id=session_id) }}" class="btn">Download All as ZIP</a>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Convert More Images</a>
+            <a href="{{ url_for('cleanup', session_id=session_id) }}" class="btn btn-secondary">Clear Files</a>
+        </div>
+    </div>
+</body>
+</html>

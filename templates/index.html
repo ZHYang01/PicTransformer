@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PicTransformer - Batch Image to JPEG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+        .nav {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .nav-item {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .main-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: center;
+            width: 100%;
+            max-width: 700px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            padding: 40px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .drop-zone {
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .drop-zone.dragover {
+            transform: scale(1.02);
+        }
+        .drop-zone-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .drop-zone-text {
+            color: #475569;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .drop-zone-hint {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            margin-top: 24px;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .file-list {
+            margin-top: 24px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .file-name {
+            color: #334155;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        .file-size {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            margin-left: 12px;
+        }
+        .flash {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        .options {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+        .option-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        .quality-value {
+            font-weight: 600;
+            color: #3b82f6;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            margin-top: 8px;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #3b82f6;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+        .back-to-top:hover {
+            background: #2563eb;
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="#img2pdf" class="nav-item">🖼️ Image2PDF</a>
+        <a href="#pictransformer" class="nav-item">📷 PicTransformer</a>
+        <a href="#pdfmerger" class="nav-item">📄 PDFmerger</a>
+    </div>
+    
+    <div class="main-wrapper">
+        <div class="container" id="pictransformer">
+            <h1>PicTransformer</h1>
+            <p class="subtitle">Batch convert any image format to JPEG</p>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">📁</div>
+                    <p class="drop-zone-text">Drag & drop images here or click to browse</p>
+                    <p class="drop-zone-hint">Supports PNG, JPG, BMP, GIF, TIFF, WebP, HEIC, SVG, ICO, PSD, RAW, AVIF</p>
+                    <input type="file" id="fileInput" name="files" multiple accept="image/*">
+                </div>
+                
+                <div class="file-list" id="fileList"></div>
+                
+                <div class="options">
+                    <div class="option-label">
+                        <span>JPEG Quality</span>
+                        <span class="quality-value" id="qualityValue">95%</span>
+                    </div>
+                    <input type="range" id="qualitySlider" name="quality" min="10" max="100" value="95">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">
+                        <span>Smaller file</span>
+                        <span>Higher quality</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button type="submit" class="btn" id="submitBtn" disabled>Convert to JPEG</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="container" id="pdfmerger">
+            <h1>PDFmerger</h1>
+            <p class="subtitle">Merge multiple PDF files into one</p>
+            
+            <form id="pdfForm" action="/merge-pdf" method="post" enctype="multipart/form-data">
+                <div class="drop-zone" id="pdfDropZone">
+                    <div class="drop-zone-icon">📄</div>
+                    <p class="drop-zone-text">Drag & drop PDF files here or click to browse</p>
+                    <p class="drop-zone-hint">Select at least 2 PDF files</p>
+                    <input type="file" id="pdfFileInput" name="files" multiple accept="application/pdf">
+                </div>
+                
+                <div class="file-list" id="pdfFileList"></div>
+                
+                <div style="text-align: center;">
+                    <button type="submit" class="btn" id="pdfSubmitBtn" disabled>Merge PDFs</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="container" id="img2pdf">
+            <h1>Image2PDF</h1>
+            <p class="subtitle">Convert images to a single PDF document</p>
+            
+            <form id="img2pdfForm" action="/image-to-pdf" method="post" enctype="multipart/form-data">
+                <div class="drop-zone" id="img2pdfDropZone">
+                    <div class="drop-zone-icon">🖼️</div>
+                    <p class="drop-zone-text">Drag & drop images here or click to browse</p>
+                    <p class="drop-zone-hint">Select images to convert to PDF</p>
+                    <input type="file" id="img2pdfFileInput" name="files" multiple accept="image/*">
+                </div>
+                
+                <div class="file-list" id="img2pdfFileList"></div>
+                
+                <div style="text-align: center;">
+                    <button type="submit" class="btn" id="img2pdfSubmitBtn" disabled>Convert to PDF</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        function updateFileList(files) {
+            fileList.innerHTML = '';
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatSize(file.size)}</span>
+                    `;
+                    fileList.appendChild(item);
+                }
+            });
+            submitBtn.disabled = files.length === 0;
+        }
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            updateFileList(fileInput.files);
+        });
+        
+        fileInput.addEventListener('change', () => {
+            updateFileList(fileInput.files);
+        });
+        
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        qualitySlider.addEventListener('input', () => {
+            qualityValue.textContent = qualitySlider.value + '%';
+        });
+        
+        // PDF merger functionality
+        const pdfDropZone = document.getElementById('pdfDropZone');
+        const pdfFileInput = document.getElementById('pdfFileInput');
+        const pdfFileList = document.getElementById('pdfFileList');
+        const pdfSubmitBtn = document.getElementById('pdfSubmitBtn');
+        
+        function updatePdfFileList(files) {
+            pdfFileList.innerHTML = '';
+            Array.from(files).forEach(file => {
+                if (file.type === 'application/pdf') {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatSize(file.size)}</span>
+                    `;
+                    pdfFileList.appendChild(item);
+                }
+            });
+            pdfSubmitBtn.disabled = files.length < 2;
+        }
+        
+        pdfDropZone.addEventListener('click', () => pdfFileInput.click());
+        
+        pdfDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.add('dragover');
+        });
+        
+        pdfDropZone.addEventListener('dragleave', () => {
+            pdfDropZone.classList.remove('dragover');
+        });
+        
+        pdfDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.remove('dragover');
+            pdfFileInput.files = e.dataTransfer.files;
+            updatePdfFileList(pdfFileInput.files);
+        });
+        
+        pdfFileInput.addEventListener('change', () => {
+            updatePdfFileList(pdfFileInput.files);
+        });
+        
+        // Image to PDF functionality
+        const img2pdfDropZone = document.getElementById('img2pdfDropZone');
+        const img2pdfFileInput = document.getElementById('img2pdfFileInput');
+        const img2pdfFileList = document.getElementById('img2pdfFileList');
+        const img2pdfSubmitBtn = document.getElementById('img2pdfSubmitBtn');
+        
+        function updateImg2PdfFileList(files) {
+            img2pdfFileList.innerHTML = '';
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatSize(file.size)}</span>
+                    `;
+                    img2pdfFileList.appendChild(item);
+                }
+            });
+            img2pdfSubmitBtn.disabled = files.length === 0;
+        }
+        
+        img2pdfDropZone.addEventListener('click', () => img2pdfFileInput.click());
+        
+        img2pdfDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            img2pdfDropZone.classList.add('dragover');
+        });
+        
+        img2pdfDropZone.addEventListener('dragleave', () => {
+            img2pdfDropZone.classList.remove('dragover');
+        });
+        
+        img2pdfDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            img2pdfDropZone.classList.remove('dragover');
+            img2pdfFileInput.files = e.dataTransfer.files;
+            updateImg2PdfFileList(img2pdfFileInput.files);
+        });
+        
+        img2pdfFileInput.addEventListener('change', () => {
+            updateImg2PdfFileList(img2pdfFileInput.files);
+        });
+    </script>
+    
+    <a href="#" class="back-to-top">↑</a>
+</body>
+</html>

@@ -1,0 +1,53 @@
+PTRANSFORMER(1)               General Commands Manual                PTRANSFORMER(1)
+
+NAME
+       ptransformer - Batch image format converter to JPEG
+
+SYNOPSIS
+       ptransformer [--port PORT] [--quality QUALITY] [--help]
+
+DESCRIPTION
+       PicTransformer is a web-based tool that converts images to JPEG format
+       in batch. It features drag-and-drop upload, batch conversion, and
+       automatic transparency handling.
+
+OPTIONS
+       --port PORT
+              Set the server port (default: 5000)
+
+       --quality QUALITY
+              Set JPEG quality 1-100 (default: 95)
+
+       --help
+              Show this help message
+
+USAGE
+       Start the server:
+              ./start.sh
+
+       Open http://127.0.0.1:5000 in your browser
+
+       Supported input formats: PNG, JPG, JPEG, BMP, GIF, TIFF, WebP, TIF
+
+FILES
+       ~/Dev/Pictransformer/
+              Default installation directory
+
+       ~/Dev/Pictransformer/uploads/
+              Temporary storage for uploaded images
+
+       ~/Dev/Pictransformer/converted/
+              Temporary storage for converted JPEG files
+
+EXAMPLES
+       Start with default settings:
+              ./start.sh
+
+       Start on custom port:
+              python3 app.py --port 8080
+
+AUTHOR
+       Written by PicTransformer Team.
+
+COPYRIGHT
+       Open source project.

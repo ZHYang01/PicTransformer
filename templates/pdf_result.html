@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Merge Complete - PicTransformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .file-info {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .file-name {
+            color: #334155;
+            font-size: 1.1rem;
+            font-weight: 600;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+        .file-size {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .btn {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #64748b;
+            margin-left: 12px;
+        }
+        .btn-secondary:hover {
+            background: #475569;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">📄</div>
+        <h1>PDF Merged!</h1>
+        <p class="subtitle">{{ file_count }} PDF files combined into one</p>
+        
+        <div class="file-info">
+            <div class="file-name">{{ merged_file }}</div>
+            <div class="file-size">{{ (merged_size / 1024)|round(1) }} KB</div>
+        </div>
+        
+        <div class="btn-group">
+            <a href="{{ url_for('download_pdf', filename=merged_file) }}" class="btn">Download Merged PDF</a>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Merge More</a>
+        </div>
+    </div>
+</body>
+</html>

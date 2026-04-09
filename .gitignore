@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Virtualenv
+venv/
+env/
+.env
+
+# Temporary files
+uploads/
+converted/
+pdf_merged/
+
+# Output files
+*.zip
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
