@@ -15,13 +15,19 @@ app.secret_key = os.urandom(24)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 CONVERTED_FOLDER = os.path.join(os.path.dirname(__file__), 'converted')
 PDF_FOLDER = os.path.join(os.path.dirname(__file__), 'pdf_merged')
+MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB request cap
+MAX_FILES_PER_REQUEST = 30
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'gif', 'tiff', 'webp', 'tif', 'heic', 'heif', 'svg', 'ico', 'psd', 'raw', 'avif', 'pdf'}
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 for folder in [UPLOAD_FOLDER, CONVERTED_FOLDER, PDF_FOLDER]:
     os.makedirs(folder, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def redirect_to_section(section_id):
+    return redirect(f"{url_for('index')}#{section_id}")
 
 def convert_to_jpeg(input_path, output_path, quality=95):
     """Convert any image format to JPEG."""
@@ -43,6 +49,11 @@ def convert_to_jpeg(input_path, output_path, quality=95):
 def index():
     return render_template('index.html')
 
+@app.errorhandler(413)
+def handle_large_upload(_error):
+    flash(f'Upload too large. Maximum request size is {MAX_CONTENT_LENGTH // (1024 * 1024)} MB.')
+    return redirect(url_for('index'))
+
 @app.route('/upload', methods=['POST'])
 def upload_files():
     if 'files' not in request.files:
@@ -53,9 +64,13 @@ def upload_files():
     if not files or all(f.filename == '' for f in files):
         flash('No files selected')
         return redirect(url_for('index'))
+    if len(files) > MAX_FILES_PER_REQUEST:
+        flash(f'Too many files. Maximum is {MAX_FILES_PER_REQUEST} per request.')
+        return redirect(url_for('index'))
     
     converted_files = []
     session_id = str(uuid.uuid4())
+    used_output_names = set()
     
     for file in files:
         if file and file.filename and allowed_file(file.filename):
@@ -65,6 +80,11 @@ def upload_files():
             
             base_name = os.path.splitext(filename)[0]
             output_filename = f"{base_name}.jpg"
+            suffix = 1
+            while output_filename in used_output_names:
+                output_filename = f"{base_name}_{suffix}.jpg"
+                suffix += 1
+            used_output_names.add(output_filename)
             output_path = os.path.join(CONVERTED_FOLDER, f"{session_id}_{output_filename}")
             
             quality = int(request.form.get('quality', 95))
@@ -139,12 +159,15 @@ def cleanup():
 def merge_pdf():
     if 'files' not in request.files:
         flash('No files provided')
-        return redirect(url_for('pdf_merger'))
+        return redirect_to_section('pdfmerger')
     
     files = request.files.getlist('files')
     if not files or all(f.filename == '' for f in files):
         flash('No files selected')
-        return redirect(url_for('pdf_merger'))
+        return redirect_to_section('pdfmerger')
+    if len(files) > MAX_FILES_PER_REQUEST:
+        flash(f'Too many files. Maximum is {MAX_FILES_PER_REQUEST} per request.')
+        return redirect_to_section('pdfmerger')
     
     session_id = str(uuid.uuid4())
     saved_files = []
@@ -160,7 +183,7 @@ def merge_pdf():
         for f in saved_files:
             os.remove(f)
         flash('Need at least 2 PDF files to merge')
-        return redirect(url_for('pdf_merger'))
+        return redirect_to_section('pdfmerger')
     
     output_filename = f"merged_{session_id[:8]}.pdf"
     output_path = os.path.join(PDF_FOLDER, output_filename)
@@ -203,7 +226,10 @@ def image_to_pdf():
     files = request.files.getlist('files')
     if not files or all(f.filename == '' for f in files):
         flash('No files selected')
-        return redirect(url_for('index'))
+        return redirect_to_section('img2pdf')
+    if len(files) > MAX_FILES_PER_REQUEST:
+        flash(f'Too many files. Maximum is {MAX_FILES_PER_REQUEST} per request.')
+        return redirect_to_section('img2pdf')
     
     session_id = str(uuid.uuid4())
     saved_files = []
@@ -217,7 +243,7 @@ def image_to_pdf():
     
     if not saved_files:
         flash('No valid images to convert')
-        return redirect(url_for('index'))
+        return redirect_to_section('img2pdf')
     
     output_filename = f"images_{session_id[:8]}.pdf"
     output_path = os.path.join(PDF_FOLDER, output_filename)
