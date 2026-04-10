@@ -45,3 +45,39 @@ pip install -r requirements.txt
 ```
 
 停止服务 / Stop: 在终端按 `Ctrl+C` / Press `Ctrl+C` in terminal
+
+也可以直接运行 Python 并指定参数 / You can also run Python directly with CLI options:
+
+```bash
+python3 app.py --port 5000 --quality 95
+```
+
+- `--port`: 服务端口 (1-65535) / Server port
+- `--quality`: 默认 JPEG 质量 (1-100) / Default JPEG quality
+
+---
+
+## 环境变量 / Environment Variables
+
+- `PTRANSFORMER_SECRET_KEY`
+  - 用于 Flask 会话签名，生产环境建议显式设置固定值
+  - Used for Flask session signing; set a stable value in production
+
+示例 / Example:
+
+```bash
+export PTRANSFORMER_SECRET_KEY="replace-with-a-strong-random-secret"
+python3 app.py --port 5000 --quality 90
+```
+
+---
+
+## 上传与临时文件策略 / Upload and Temporary File Policy
+
+- 单次请求限制 / Per-request limits:
+  - 最多 30 个文件 / Up to 30 files
+  - 最大 50 MB 请求体 / Max 50 MB request size
+- PDF 临时文件会自动清理旧文件（默认保留约 1 小时）
+  - Stale PDF temp files are cleaned automatically (about 1 hour retention by default)
+- PDF 结果页提供 **Clear PDF Files** 按钮，可手动清理当前会话文件
+  - PDF result page includes a **Clear PDF Files** button for manual cleanup
