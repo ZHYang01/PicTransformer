@@ -102,6 +102,7 @@
         
         <div class="btn-group">
             <a href="{{ url_for('download_pdf', filename=merged_file) }}" class="btn">Download Merged PDF</a>
+            <a href="{{ url_for('cleanup', session_id=session_id) }}" class="btn btn-secondary">Clear Files</a>
             <a href="{{ url_for('index') }}" class="btn btn-secondary">Merge More</a>
         </div>
     </div>

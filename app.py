@@ -1,4 +1,6 @@
+import argparse
 import os
+import time
 import uuid
 import io
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for
@@ -10,15 +12,18 @@ from pypdf import PdfWriter
 pillow_heif.register_heif_opener()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('PTRANSFORMER_SECRET_KEY', 'pictransformer-dev-secret-key')
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 CONVERTED_FOLDER = os.path.join(os.path.dirname(__file__), 'converted')
 PDF_FOLDER = os.path.join(os.path.dirname(__file__), 'pdf_merged')
 MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB request cap
 MAX_FILES_PER_REQUEST = 30
+DEFAULT_JPEG_QUALITY = 95
+PDF_RETENTION_SECONDS = 60 * 60
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp', 'gif', 'tiff', 'webp', 'tif', 'heic', 'heif', 'svg', 'ico', 'psd', 'raw', 'avif', 'pdf'}
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+app.config['DEFAULT_JPEG_QUALITY'] = DEFAULT_JPEG_QUALITY
 
 for folder in [UPLOAD_FOLDER, CONVERTED_FOLDER, PDF_FOLDER]:
     os.makedirs(folder, exist_ok=True)
@@ -28,6 +33,25 @@ def allowed_file(filename):
 
 def redirect_to_section(section_id):
     return redirect(f"{url_for('index')}#{section_id}")
+
+def clamp_quality(value, default_quality):
+    try:
+        quality = int(value)
+    except (TypeError, ValueError):
+        return default_quality
+    return max(1, min(100, quality))
+
+def cleanup_stale_files(folder, max_age_seconds):
+    now = time.time()
+    for filename in os.listdir(folder):
+        filepath = os.path.join(folder, filename)
+        if not os.path.isfile(filepath):
+            continue
+        if now - os.path.getmtime(filepath) > max_age_seconds:
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
 
 def convert_to_jpeg(input_path, output_path, quality=95):
     """Convert any image format to JPEG."""
@@ -87,7 +111,10 @@ def upload_files():
             used_output_names.add(output_filename)
             output_path = os.path.join(CONVERTED_FOLDER, f"{session_id}_{output_filename}")
             
-            quality = int(request.form.get('quality', 95))
+            quality = clamp_quality(
+                request.form.get('quality', app.config['DEFAULT_JPEG_QUALITY']),
+                app.config['DEFAULT_JPEG_QUALITY'],
+            )
             
             try:
                 original_size, converted_size = convert_to_jpeg(input_path, output_path, quality=quality)
@@ -146,7 +173,6 @@ def download_all():
 
 @app.route('/cleanup')
 def cleanup():
-    import shutil
     session_id = request.args.get('session_id')
     if session_id:
         for folder in [UPLOAD_FOLDER, CONVERTED_FOLDER]:
@@ -155,8 +181,33 @@ def cleanup():
                     os.remove(os.path.join(folder, f))
     return '', 204
 
+@app.route('/cleanup-pdf')
+def cleanup_pdf():
+    session_id = request.args.get('session_id')
+    section = request.args.get('section', 'pdfmerger')
+    if not session_id:
+        flash('No PDF session found')
+        return redirect_to_section(section)
+
+    removed_count = 0
+    session_prefix = f"{session_id}_"
+    for filename in os.listdir(PDF_FOLDER):
+        if filename.startswith(session_prefix):
+            try:
+                os.remove(os.path.join(PDF_FOLDER, filename))
+                removed_count += 1
+            except OSError:
+                pass
+
+    if removed_count:
+        flash('Temporary PDF files were cleared.')
+    else:
+        flash('No temporary PDF files found for this session.')
+    return redirect_to_section(section)
+
 @app.route('/merge-pdf', methods=['POST'])
 def merge_pdf():
+    cleanup_stale_files(PDF_FOLDER, PDF_RETENTION_SECONDS)
     if 'files' not in request.files:
         flash('No files provided')
         return redirect_to_section('pdfmerger')
@@ -185,7 +236,7 @@ def merge_pdf():
         flash('Need at least 2 PDF files to merge')
         return redirect_to_section('pdfmerger')
     
-    output_filename = f"merged_{session_id[:8]}.pdf"
+    output_filename = f"{session_id}_merged.pdf"
     output_path = os.path.join(PDF_FOLDER, output_filename)
     
     try:
@@ -204,7 +255,9 @@ def merge_pdf():
         return render_template('pdf_result.html', 
                              merged_file=output_filename,
                              merged_size=merged_size,
-                             file_count=len(saved_files))
+                             file_count=len(saved_files),
+                             session_id=session_id,
+                             section='pdfmerger')
     except Exception as e:
         flash(f'Error merging PDFs: {str(e)}')
         return redirect(url_for('index'))
@@ -219,6 +272,7 @@ def download_pdf(filename):
 
 @app.route('/image-to-pdf', methods=['POST'])
 def image_to_pdf():
+    cleanup_stale_files(PDF_FOLDER, PDF_RETENTION_SECONDS)
     if 'files' not in request.files:
         flash('No files provided')
         return redirect(url_for('index'))
@@ -245,7 +299,7 @@ def image_to_pdf():
         flash('No valid images to convert')
         return redirect_to_section('img2pdf')
     
-    output_filename = f"images_{session_id[:8]}.pdf"
+    output_filename = f"{session_id}_images.pdf"
     output_path = os.path.join(PDF_FOLDER, output_filename)
     
     try:
@@ -277,10 +331,38 @@ def image_to_pdf():
         return render_template('pdf_result.html', 
                              merged_file=output_filename,
                              merged_size=merged_size,
-                             file_count=len(saved_files))
+                             file_count=len(saved_files),
+                             session_id=session_id,
+                             section='img2pdf')
     except Exception as e:
         flash(f'Error converting images to PDF: {str(e)}')
         return redirect(url_for('index'))
 
+def parse_cli_args():
+    parser = argparse.ArgumentParser(
+        description='PicTransformer local web app server',
+    )
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=5000,
+        help='Port to bind the web server to (default: 5000)',
+    )
+    parser.add_argument(
+        '--quality',
+        type=int,
+        default=DEFAULT_JPEG_QUALITY,
+        help='Default JPEG quality used when no form value is provided (1-100, default: 95)',
+    )
+    args = parser.parse_args()
+
+    if not (1 <= args.port <= 65535):
+        parser.error('--port must be between 1 and 65535.')
+    if not (1 <= args.quality <= 100):
+        parser.error('--quality must be between 1 and 100.')
+    return args
+
 if __name__ == '__main__':
-    app.run(debug=False, port=5000)
+    cli_args = parse_cli_args()
+    app.config['DEFAULT_JPEG_QUALITY'] = cli_args.quality
+    app.run(debug=False, port=cli_args.port)
